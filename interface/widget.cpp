@@ -46,14 +46,14 @@ Widget::Widget(QWidget *parent) :
     ui(new Ui::Widget)
 {
     /*Serial port setup*/
-    SerialWaiterDialog swd(this);
-    swd.exec();
-    QString port_name = swd.get_selection();
-    if(port_name.isNull()) std::exit(1);
+    //SerialWaiterDialog swd(this);
+    //swd.exec();
+    //QString port_name = swd.get_selection();
+    //if(port_name.isNull()) std::exit(1);
 
-    carPort.setPortName(port_name);
-    carPort.setBaudRate(QSerialPort::Baud9600);
-    carPort.open(QIODevice::ReadWrite);
+    //carPort.setPortName(port_name);
+    //carPort.setBaudRate(QSerialPort::Baud9600);
+    //carPort.open(QIODevice::ReadWrite);
 
     //char snd[2];
     //snd[0] = 1;
@@ -67,10 +67,14 @@ Widget::Widget(QWidget *parent) :
     programCarSpeed_motor2=50;
     motor1_direction=1;
     motor2_direction=1;
+    lineDriveMode = false;
     electromagnetState=false;
+
     ui->setupUi(this);
+    connect(ui->checkBox,&QCheckBox::stateChanged,this,[=](){electromagnetState = !electromagnetState;});
+    connect(ui->checkBox_2,&QCheckBox::stateChanged,this,[=](){lineDriveMode = !lineDriveMode;});
+
     QObject::connect(ui->pushButton_5,SIGNAL(clicked()),this,SLOT(carStatus()));
-    QObject::connect(ui->pushButton_6,SIGNAL(clicked()),this,SLOT(electromagnetStatus()));
     QObject::connect(ui->pushButton_7, SIGNAL(clicked()), this, SLOT(exit()));
     QObject::connect(ui->pushButton, SIGNAL(clicked()), this, SLOT(carAcceleration()));
     QObject::connect(ui->pushButton_2, SIGNAL(clicked()), this, SLOT(carBraking()));
@@ -81,20 +85,14 @@ Widget::Widget(QWidget *parent) :
 
     ui->pushButton->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
 "QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
     ui->pushButton_2->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
 "QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
     ui->pushButton_3->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
 "QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
     ui->pushButton_4->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
 "QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
     ui->pushButton_5->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
 "QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
-    ui->pushButton_6->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
     ui->pushButton_7->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
 "QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
 
@@ -102,8 +100,6 @@ Widget::Widget(QWidget *parent) :
     ui->verticalSlider_2->setValue(programCarSpeed_motor2);
     ui->verticalSlider->setRange(0,100);
     ui->verticalSlider_2->setRange(0,100);
-
-
 }
 
 Widget::~Widget()
@@ -135,20 +131,6 @@ void Widget::carStatus()
 
     }
 ArduinoOut();
-}
-
-void Widget::electromagnetStatus()
-{
-    electromagnetState = !electromagnetState;
-    if(electromagnetState){
-     ui->textEdit_5->setText("On");
-
-    }
-    else {
-        ui->textEdit_5->setText("Off");
-
-    }
-
 }
 
 void Widget::exit()
