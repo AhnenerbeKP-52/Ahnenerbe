@@ -22,5 +22,3 @@ FORMS    += widget.ui \
 
 RESOURCES += \
     resources.qrc \
-    t.qrc
-
