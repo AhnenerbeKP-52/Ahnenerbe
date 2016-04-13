@@ -35,7 +35,15 @@ SerialWaiterDialog::SerialWaiterDialog(QWidget* parent)
     : QDialog(parent, Qt::WindowTitleHint | Qt::WindowCloseButtonHint),
       form(new Ui::Dialog)
 {
+
     form->setupUi(this);
+
+    form->refresh_button->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
+"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
+
+    form->confirm_button->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
+"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
+
     connect(form->refresh_button,&QPushButton::clicked,this, &SerialWaiterDialog::refreshPortList);
     connect(form->port_list,static_cast<void (QComboBox::*)(int n)>(&QComboBox::activated),
             this,&SerialWaiterDialog::selectPort);
