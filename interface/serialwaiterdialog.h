@@ -5,15 +5,14 @@
 #include <QBoxLayout>
 #include <QComboBox>
 #include <QPushButton>
+#include <QPicture>
+#include "ui_serialreaderdialog.h"
 
 class SerialWaiterDialog : public QDialog
 {
     Q_OBJECT
+    Ui::Dialog* form;
     bool selected;
-    QBoxLayout* lo;
-    QComboBox* port_list;
-    QPushButton* refresh_button;
-    QPushButton* confirm_button;
     QString user_selection;
 public:
     SerialWaiterDialog(QWidget* parent = nullptr);
