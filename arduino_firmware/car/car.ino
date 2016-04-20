@@ -76,7 +76,7 @@ void setup_DC(){
 
 //TODO: use bw^(note/12)
 int note_to_freq(char note){
-  return 50+note * 78;
+  return 0+note * 30;
 }
 
 void update_note(){
@@ -108,9 +108,11 @@ void loadMelody(){
   current_note = 0;
   while(!Serial.available());//Wait for melody length
   melody_size = Serial.read();
-  while(Serial.available() < melody_size * 2);
+ 
   for(int i = 0; i < melody_size; i++){
+    while(!Serial.available());//Wait for note
     notes[i] = Serial.read();
+    while(!Serial.available());//Wait for length
     note_length[i] = Serial.read();
   }
   note_change_time = millis();
