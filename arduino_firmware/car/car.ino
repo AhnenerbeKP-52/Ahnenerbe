@@ -5,12 +5,12 @@
 #define SPEAKER_PIN 3
 
 #define R_DC_PA 6
-#define R_DC_P1 5
-#define R_DC_P2 4
+#define R_DC_P1 4
+#define R_DC_P2 5
 
 #define L_DC_PA 9
-#define L_DC_P1 8
-#define L_DC_P2 7
+#define L_DC_P1 7
+#define L_DC_P2 8
 /*-----------------PINS END----------*/
 
 #define MAX_MELODY_LENGTH 100
