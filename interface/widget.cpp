@@ -1,105 +1,117 @@
+#include "opcodes.h"
+
 #include "widget.h"
-#include "time.h"
-#include "ui_widget.h"
-//include <Windows.h>
-#include <cstdlib>
-#include <iostream>
 #include "serialwaiterdialog.h"
-
 #include <QtSerialPort/QSerialPortInfo>
-
 #include <Qt>
+#include <algorithm>
+
+using std::min;
+using std::max;
 
 void Widget::keyPressEvent(QKeyEvent * event){
 
     switch(event->key()){
     case Qt::Key_W:
-       // ui->pushButton->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red; }");
-       // Sleep(10);
-       // ui->pushButton->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }");
         carAcceleration();
         break;
     case Qt::Key_A:
-        //ui->textEdit->setText("a");
         carTurnLeft();
         break;
     case Qt::Key_S:
-        //ui->textEdit->setText("s");
-        carBraking();
+        carBreaking();
         break;
     case Qt::Key_D:
-       // ui->textEdit->setText("d");
         carTurnRight();
         break;
+
+    case Qt::Key_Escape:
+        resetMotors();
+        break;
     }
+}
 
-    //ui->textEdit->setText(event->text());
+void Widget::updateSpeedSliders(){
+    ui->left_speed_slider->setValue(left_motor_speed);
+    ui->right_speed_slider->setValue(right_motor_speed);
+}
 
+void Widget::updateSpeedLCDs(){
+    ui->left_speed_lcd->display((left_motor_speed-50)*2);
+    ui->right_speed_lcd->display((right_motor_speed-50)*2);
+}
+
+void Widget::updateSpeedDisplays(){
+    updateSpeedSliders();
+    updateSpeedLCDs();
+}
+
+void Widget::setupEngines(){
+    left_motor_speed=50;
+    right_motor_speed=50;
+    left_motor_forward=1;
+    right_motor_forward=1;
+
+    ui->left_speed_slider->setRange(0,100);
+    ui->right_speed_slider->setRange(0,100);
+
+    updateSpeedDisplays();
+
+    connect(ui->acceleration_btn,&QPushButton::clicked, this, &Widget::carAcceleration);
+    connect(ui->breaking_btn, &QPushButton::clicked, this, &Widget::carBreaking);
+    connect(ui->turn_left_btn,&QPushButton::clicked, this, &Widget::carTurnLeft);
+    connect(ui->turn_right_btn, &QPushButton::clicked, this, &Widget::carTurnRight);
+
+    connect(ui->left_speed_slider, &QSlider::valueChanged, this, &Widget::change_left_motor_speed);
+    connect(ui->right_speed_slider, &QSlider::valueChanged, this, &Widget::change_right_motor_speed);
+}
+
+void Widget::setupSerial(){
+    SerialWaiterDialog swd(this);
+
+    swd.exec();
+    QString port_name = swd.get_selection();
+
+    if(port_name.isNull()) std::exit(1);
+
+    carPort.setPortName(port_name);
+    carPort.setBaudRate(QSerialPort::Baud9600);
+    carPort.open(QIODevice::ReadWrite);
+}
+
+void Widget::setupElectromagnet(){
+    electromagnet_enabled=false;
+    connect(ui->electromagnet_chbox, &QCheckBox::stateChanged, this, &Widget::electromagnetToggle);
+}
+
+void Widget::setupLight(){
+    light_enabled=false;
+    connect(ui->headlight_chbox, &QCheckBox::stateChanged, this, &Widget::lightToggle);
+}
+
+void Widget::setupMusic(){
+    connect(ui->melody_list,SIGNAL(currentIndexChanged(int)),this,SLOT(selectMusic(int)));
+    connect(ui->refresh_button, &QPushButton::clicked,this, &Widget::fillMusicList);
+    connect(ui->upload_button, &QPushButton::clicked,this,&Widget::uploadMusic);
+    connect(ui->pause_button, &QPushButton::clicked, this, &Widget::musicToggle);
+
+    music_playing = false;
+    fillMusicList();
 }
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget)
 {
-    /*Serial port setup*/
-    SerialWaiterDialog swd(this);
-    swd.exec();
-    QString port_name = swd.get_selection();
-    if(port_name.isNull()) std::exit(1);
-
-    carPort.setPortName(port_name);
-    carPort.setBaudRate(QSerialPort::Baud9600);
-    carPort.open(QIODevice::ReadWrite);
-
-    //char snd[2];
-    //snd[0] = 1;
-   // snd[1] = 89;
-    //carPort.write(snd,2);
-
-
-
-    carState=false;
-    programCarSpeed_motor1=50;
-    programCarSpeed_motor2=50;
-    motor1_direction=1;
-    motor2_direction=1;
-    electromagnetState=false;
+    setupSerial();
     ui->setupUi(this);
-    QObject::connect(ui->pushButton_5,SIGNAL(clicked()),this,SLOT(carStatus()));
-    QObject::connect(ui->pushButton_6,SIGNAL(clicked()),this,SLOT(electromagnetStatus()));
-    QObject::connect(ui->pushButton_7, SIGNAL(clicked()), this, SLOT(exit()));
-    QObject::connect(ui->pushButton, SIGNAL(clicked()), this, SLOT(carAcceleration()));
-    QObject::connect(ui->pushButton_2, SIGNAL(clicked()), this, SLOT(carBraking()));
-    QObject::connect(ui->pushButton_3, SIGNAL(clicked()), this, SLOT(carTurnRight()));
-    QObject::connect(ui->pushButton_4, SIGNAL(clicked()), this, SLOT(carTurnLeft()));
-    QObject::connect(ui->verticalSlider, SIGNAL(valueChanged(int)), this, SLOT(cangeCarProgramSpeed1()));
-    QObject::connect(ui->verticalSlider_2, SIGNAL(valueChanged(int)), this, SLOT(cangeCarProgramSpeed2()));
+    setupLight();
+    setupEngines();
+    setupElectromagnet();
+    setupMusic();
 
-    ui->pushButton->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
-    ui->pushButton_2->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-    ui->pushButton_3->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-    ui->pushButton_4->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
-    ui->pushButton_5->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
-    ui->pushButton_6->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
-    ui->pushButton_7->setStyleSheet("QPushButton{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: gray; }"
-"QPushButton:hover{background-color: lightgrey; border-style: outset; border-width: 5px; border-color: red;}");
-
-    ui->verticalSlider->setValue(programCarSpeed_motor1);
-    ui->verticalSlider_2->setValue(programCarSpeed_motor2);
-    ui->verticalSlider->setRange(0,100);
-    ui->verticalSlider_2->setRange(0,100);
-
-
+    connect(ui->reset_btn,&QPushButton::clicked,this,&Widget::resetMotors);
+    QObject::connect(ui->exit_button, SIGNAL(clicked()), this, SLOT(exit()));
 }
 
 Widget::~Widget()
@@ -107,44 +119,12 @@ Widget::~Widget()
     delete ui;
 }
 
-void Widget::carStatus()
+void Widget::resetMotors()
 {
-    carState = !carState;
-    if(carState){
-        programCarSpeed_motor1=50;
-        programCarSpeed_motor2=50;
-        ui->verticalSlider->setValue(programCarSpeed_motor1);
-         ui->verticalSlider_2->setValue(programCarSpeed_motor2);
-         ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
-         ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
-     ui->textEdit->setText("Reset");
-
-    }
-    else {
-        programCarSpeed_motor1=50;
-        programCarSpeed_motor2=50;
-        ui->verticalSlider->setValue(programCarSpeed_motor1);
-         ui->verticalSlider_2->setValue(programCarSpeed_motor2);
-         ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
-         ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
-        ui->textEdit->setText("Reset");
-
-    }
-ArduinoOut();
-}
-
-void Widget::electromagnetStatus()
-{
-    electromagnetState = !electromagnetState;
-    if(electromagnetState){
-     ui->textEdit_5->setText("On");
-
-    }
-    else {
-        ui->textEdit_5->setText("Off");
-
-    }
-
+    left_motor_speed=50;
+    right_motor_speed=50;
+    updateSpeedDisplays();
+    writeMovementParams();
 }
 
 void Widget::exit()
@@ -155,128 +135,140 @@ void Widget::exit()
 
 void Widget::carAcceleration()
 {
+    left_motor_speed = min(100,left_motor_speed+5);
+    right_motor_speed = min(100,right_motor_speed+5);
 
-        programCarSpeed_motor1+=5;
-        programCarSpeed_motor2+=5;
+    updateSpeedDisplays();
 
-        if(programCarSpeed_motor1>100){
-            programCarSpeed_motor1=100;
-        }
-        if(programCarSpeed_motor2>100){
-          programCarSpeed_motor2=100;
-       }
-
-        ui->verticalSlider->setValue(programCarSpeed_motor1);
-         ui->verticalSlider_2->setValue(programCarSpeed_motor2);
-    ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
-    ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
-
-
-    ArduinoOut();
-
-   // ui->label_10->setText(QString("%1").arg(programCarSpeed));
+    writeMovementParams();
 }
 
-void Widget::carBraking()
+void Widget::carBreaking()
 {
+    left_motor_speed = max(0,left_motor_speed-5);
+    right_motor_speed = max(0,right_motor_speed-5);
 
-    programCarSpeed_motor1-=5;
-    programCarSpeed_motor2-=5;
+    updateSpeedDisplays();
 
-        if(programCarSpeed_motor1<0){
-            programCarSpeed_motor1=0;
-        }
-        if(programCarSpeed_motor2<0){
-            programCarSpeed_motor2=0;
-        }
+    writeMovementParams();
 
-        ui->verticalSlider->setValue(programCarSpeed_motor1);
-         ui->verticalSlider_2->setValue(programCarSpeed_motor2);
-     ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
-     ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
-
-ArduinoOut();
-
-}
-
-void Widget::cangeCarProgramSpeed1()
-{
-    programCarSpeed_motor1 = ui->verticalSlider->value();
-     ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
-     ArduinoOut();
-    // programCarSpeed_motor2 = ui->verticalSlider_2->value();
 }
 
 void Widget::carTurnLeft()
 {
-     programCarSpeed_motor2+=5;
-     programCarSpeed_motor1-=5;
+    left_motor_speed = max(0,left_motor_speed-5);
+    right_motor_speed = min(100,right_motor_speed+5);
 
-     if(programCarSpeed_motor2>100){
-     programCarSpeed_motor2=100;
-     }
-     if(programCarSpeed_motor1<0){
-     programCarSpeed_motor1=0;
-     }
-     ui->verticalSlider->setValue(programCarSpeed_motor1);
-      ui->verticalSlider_2->setValue(programCarSpeed_motor2);
-  ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
-  ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
-  ArduinoOut();
-     }
+    updateSpeedDisplays();
 
+    writeMovementParams();
+}
 
 void Widget::carTurnRight()
 {
-    programCarSpeed_motor2-=5;
-    programCarSpeed_motor1+=5;
+    left_motor_speed = min(100,left_motor_speed+5);
+    right_motor_speed = max(0,right_motor_speed-5);
 
-    if(programCarSpeed_motor1>100){
-    programCarSpeed_motor1=100;
-    }
-    if(programCarSpeed_motor2<0){
-    programCarSpeed_motor2=0;
-    }
-    ui->verticalSlider->setValue(programCarSpeed_motor1);
-     ui->verticalSlider_2->setValue(programCarSpeed_motor2);
- ui->lcdNumber->display((programCarSpeed_motor1-50)*2);
- ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
- ArduinoOut();
+    updateSpeedDisplays();
+
+    writeMovementParams();
 }
 
-void Widget::ArduinoOut()
+void Widget::writeMovementParams()
 {
-    if(programCarSpeed_motor1>=50){
-        motor1_direction=1;
-    }
-    else{
-        motor1_direction=0;
-    }
+    left_motor_forward = left_motor_speed>=50;
+    right_motor_forward = right_motor_speed>=50;
 
-    if(programCarSpeed_motor2>=50){
-        motor2_direction=1;
-    }
-    else{
-        motor2_direction=0;
-    }
+    int TempSpeed=abs(left_motor_speed-50)*5;//TODO: Don't need abs
+    OutMessage[0]=OP_MOVE;
+    OutMessage[1]=TempSpeed;
+    OutMessage[2]=left_motor_forward;
+    TempSpeed=abs(right_motor_speed-50)*5;//TODO: Don't need abs
+    OutMessage[3]=TempSpeed;
+    OutMessage[4]=right_motor_forward;
 
-    TempSpeed=abs(programCarSpeed_motor1-50)*5;
-    OutMessage[0]=TempSpeed;
-    OutMessage[1]=motor1_direction;
-    TempSpeed=abs(programCarSpeed_motor2-50)*5;
-    OutMessage[2]=TempSpeed;
-    OutMessage[3]=motor2_direction;
-
-   carPort.write(OutMessage,4);
+    carPort.write(OutMessage,5);
 }
 
-void Widget::cangeCarProgramSpeed2()
+void Widget::fillMusicList()
 {
-    programCarSpeed_motor2 = ui->verticalSlider_2->value();
-     ui->lcdNumber_2->display((programCarSpeed_motor2-50)*2);
-     ArduinoOut();
+    ui->melody_list->clear();
+    QDir dir(QDir::currentPath()+"/Melodies");
+
+    QStringList files = dir.entryList(QStringList() << "*.txt", QDir::Files);
+
+    for(int i = 0; i < files.size(); ++i){
+        QString curr_file = files.at(i);
+        QString tempStr = curr_file.left(curr_file.indexOf('.'));
+        ui->melody_list->addItem(tempStr,curr_file);
+    }
+    music_selected=false;
+    ui->upload_button->setEnabled(false);
+
+    if(files.size()==1)
+        selectMusic(0);
+
+    ui->melody_list->setCurrentIndex(0);
+}
+
+void Widget::selectMusic(int selection)
+{
+    this->user_music = ui->melody_list->currentData().toString();
+    music_selected = true;
+    ui->upload_button->setEnabled(true);
 }
 
 
+void Widget::uploadMusic()
+{
+    QFile F(QDir::currentPath()+"/Melodies/"+user_music);
+    if(!F.open(QIODevice::ReadOnly)){
+        //TODO:WTF add some error handling
+    }
+    QTextStream in(&F);
+    OutMessage[0]=OP_LOAD_MUSIC;
+    int i=2;
+    while (!in.atEnd())
+    {
+        OutMessage[i]=in.readLine().toInt();
+        ++i;
+    }
+    OutMessage[1] = (i-2)/2;
+    F.close();
 
+    carPort.write(OutMessage,i);
+}
 
+void Widget::musicToggle(){
+    OutMessage[0] = music_playing ? OP_STOP_MUSIC : OP_PLAY_MUSIC;
+    carPort.write(OutMessage, 1);
+    music_playing = !music_playing;
+}
+
+void Widget::lightToggle()
+{
+    OutMessage[0] = light_enabled ? OP_LED_OFF : OP_LED_ON;
+    carPort.write(OutMessage, 1);
+    light_enabled = !light_enabled;
+}
+
+void Widget::electromagnetToggle()
+{
+    OutMessage[0] = electromagnet_enabled ? OP_CARGO_OFF : OP_CARGO_ON;
+    carPort.write(OutMessage, 1);
+    electromagnet_enabled = !electromagnet_enabled;
+}
+
+void Widget::change_left_motor_speed(int val)
+{
+    left_motor_speed = val;
+    updateSpeedLCDs();
+    writeMovementParams();
+}
+
+void Widget::change_right_motor_speed(int val)
+{
+    right_motor_speed = val;
+    updateSpeedLCDs();
+    writeMovementParams();
+}
