@@ -21,6 +21,15 @@ unsigned long note_change_time;
 bool melody_playing;
 char current_note;
 
+bool right_dc_dir_forward;
+bool left_dc_dir_forward;
+bool car_accelerating;
+bool car_braking;
+bool car_turning_left;
+bool car_turning_right;
+int car_left_dc_speed;
+int car_right_dc_speed;
+
 /*********DC CONTROL*******/
 void L_DC_stop(){
   digitalWrite(L_DC_P1, LOW);
@@ -32,27 +41,44 @@ void R_DC_stop(){
 }
 
 void L_DC_rotateBackward(){
+  left_dc_dir_forward = false;
   digitalWrite(L_DC_P1, LOW);
   digitalWrite(L_DC_P2, HIGH);
 }
 void R_DC_rotateBackward(){
+  right_dc_dir_forward = false;
   digitalWrite(R_DC_P1, LOW);
   digitalWrite(R_DC_P2, HIGH);
 }
 
 void L_DC_rotateForward(){
+  left_dc_dir_forward = true;
   digitalWrite(L_DC_P1, HIGH);
   digitalWrite(L_DC_P2, LOW);
 }
 void R_DC_rotateForward(){
+  right_dc_dir_forward = true;
   digitalWrite(R_DC_P1, HIGH);
   digitalWrite(R_DC_P2, LOW);
 }
 
 void L_DC_setSpeed(int speed){
+  if(speed < 0 && left_dc_dir_forward){
+    speed = -speed;
+    L_DC_rotateBackward();
+  }
+  else if(speed >= 0 && !left_dc_dir_forward)
+    L_DC_rotateForward();
   analogWrite(L_DC_PA, speed);
 }
 void R_DC_setSpeed(int speed){
+  if(speed < 0 && right_dc_dir_forward){
+    //speed = -speed;
+    R_DC_rotateBackward();
+  }
+  else if(speed >= 0 && !right_dc_dir_forward)
+    R_DC_rotateForward();
+  Serial.println(speed,DEC);
   analogWrite(R_DC_PA, speed);
 }
 
@@ -66,11 +92,12 @@ void setup_DC(){
   pinMode(L_DC_P2, OUTPUT);
 
   //Stop all DCs
-  L_DC_setSpeed(0);
-  R_DC_setSpeed(0);
-  
   L_DC_rotateForward();
   R_DC_rotateForward();
+  L_DC_setSpeed(0);
+  R_DC_setSpeed(0);
+  car_left_dc_speed = 0;
+  car_right_dc_speed = 0;
 }
 /******DC CONTROL END*****/
 
@@ -102,6 +129,17 @@ setup_DC();
 Serial.begin(9600);
 current_note = 0;
 melody_size = 0;
+
+for(int i = 0; i < 255; i++){
+  L_DC_setSpeed(i);
+  R_DC_setSpeed(-i);
+  delay(30);
+}
+for(int i = 255; i >= 0; i--){
+  L_DC_setSpeed(i);
+  R_DC_setSpeed(-i);
+  delay(30);
+}
 }
 
 void loadMelody(){
@@ -136,6 +174,7 @@ void loadMovementParams() {
 }
 
 void loop() {
+  /*
   if(Serial.available()){
     switch(Serial.read()){
      case OP_MOVE: loadMovementParams(); break;
@@ -146,4 +185,5 @@ void loop() {
   }
   if(melody_playing)
     update_note();
+    */
 }
