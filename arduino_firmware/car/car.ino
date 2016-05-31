@@ -1,6 +1,7 @@
 #include "opcodes.h"
 
 /*----+----+----+----PINS---+---+----+*/
+#define LIGHT_PIN 2
 #define SPEAKER_PIN 3
 
 #define R_DC_PA 6
@@ -83,6 +84,8 @@ void R_DC_setSpeed(int speed){
 }
 
 void setup_DC(){
+  pinMode(LIGHT_PIN, OUTPUT);
+  
   pinMode(R_DC_PA, OUTPUT);
   pinMode(R_DC_P1, OUTPUT);
   pinMode(R_DC_P2, OUTPUT);
@@ -129,17 +132,6 @@ setup_DC();
 Serial.begin(9600);
 current_note = 0;
 melody_size = 0;
-
-for(int i = 0; i < 255; i++){
-  L_DC_setSpeed(i);
-  R_DC_setSpeed(-i);
-  delay(30);
-}
-for(int i = 255; i >= 0; i--){
-  L_DC_setSpeed(i);
-  R_DC_setSpeed(-i);
-  delay(30);
-}
 }
 
 void loadMelody(){
@@ -174,16 +166,16 @@ void loadMovementParams() {
 }
 
 void loop() {
-  /*
   if(Serial.available()){
     switch(Serial.read()){
      case OP_MOVE: loadMovementParams(); break;
      case OP_LOAD_MUSIC: loadMelody(); break;
      case OP_PLAY_MUSIC: melody_playing = true;  noTone(SPEAKER_PIN); break;
      case OP_STOP_MUSIC: melody_playing = false; noTone(SPEAKER_PIN); break;
+     case OP_LED_ON:  digitalWrite(LIGHT_PIN, HIGH); break;
+     case OP_LED_OFF: digitalWrite(LIGHT_PIN, LOW); break;
     }
   }
   if(melody_playing)
     update_note();
-    */
 }
