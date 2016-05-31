@@ -9,8 +9,8 @@
 #define R_DC_P2 4
 
 #define L_DC_PA 9
-#define L_DC_P1 7
-#define L_DC_P2 8
+#define L_DC_P1 8
+#define L_DC_P2 7
 /*-----------------PINS END----------*/
 
 #define MAX_MELODY_LENGTH 100
