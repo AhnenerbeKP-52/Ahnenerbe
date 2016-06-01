@@ -23,3 +23,5 @@ FORMS    += widget.ui \
 
 RESOURCES += \
     resources.qrc \
+
+CONFIG+=c++11
